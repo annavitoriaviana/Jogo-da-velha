@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jogo da Velha</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #d32f2f;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 3em;
+      margin-bottom: 20px;
+    }
+
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 10px;
+      margin-top: 20px;
+      transition: transform 0.3s ease;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #fff;
+      color: #d32f2f;
+      font-size: 2em;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: background-color 0.3s, transform 0.3s;
+    }
+
+    .cell:hover {
+      background-color: #f1f1f1;
+      transform: scale(1.1);
+    }
+
+    .cell.taken {
+      pointer-events: none;
+      font-weight: bold;
+    }
+
+    .cell.x {
+      color: #f44336;
+    }
+
+    .cell.o {
+      color: #4caf50;
+    }
+
+    .message {
+      font-size: 1.5em;
+      margin-top: 20px;
+    }
+
+    .turn-indicator {
+      font-size: 1.2em;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+    button {
+      background-color: white;
+      color: #d32f2f;
+      font-size: 1.2em;
+      padding: 10px 20px;
+      border: 2px solid #d32f2f;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+      margin-top: 30px;
+    }
+
+    button:hover {
+      background-color: #f1f1f1;
+    }
+
+    .mode-buttons {
+      margin-top: 20px;
+    }
+
+    .mode-buttons button {
+      margin: 0 10px;
+    }
+
+    @media (max-width: 600px) {
+      .game-board {
+        grid-template-columns: repeat(3, 80px);
+        grid-template-rows: repeat(3, 80px);
+      }
+
+      h1 {
+        font-size: 2.5em;
+      }
+
+      .turn-indicator, .message {
+        font-size: 1.2em;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Jogo da Velha</h1>
+<div class="mode-buttons">
+  <button onclick="startGame('multiplayer')">Jogar com Amigos</button>
+  <button onclick="startGame('robot')">Jogar contra o Robô</button>
+</div>
+
+<div class="turn-indicator" id="turn-indicator" style="display:none;">É a vez de <span id="current-player">X</span></div>
+
+<div class="game-board" id="board" style="display:none;">
+  <div class="cell" data-cell="0"></div>
+  <div class="cell" data-cell="1"></div>
+  <div class="cell" data-cell="2"></div>
+  <div class="cell" data-cell="3"></div>
+  <div class="cell" data-cell="4"></div>
+  <div class="cell" data-cell="5"></div>
+  <div class="cell" data-cell="6"></div>
+  <div class="cell" data-cell="7"></div>
+  <div class="cell" data-cell="8"></div>
+</div>
+
+<div class="message" id="message"></div>
+<button onclick="resetGame()" style="display:none;">Reiniciar Jogo</button>
+
+<script>
+  let mode = '';
+  const cells = document.querySelectorAll('.cell');
+  const message = document.getElementById('message');
+  const currentPlayerIndicator = document.getElementById('current-player');
+  const turnIndicator = document.getElementById('turn-indicator');
+  let board = ['', '', '', '', '', '', '', '', ''];
+  let currentPlayer = 'X';
+  let gameOver = false;
+
+  const winConditions = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6]
+  ];
+
+  function startGame(selectedMode) {
+    mode = selectedMode;
+    document.querySelector('.mode-buttons').style.display = 'none';
+    turnIndicator.style.display = 'block';
+    document.getElementById('board').style.display = 'grid';
+    document.querySelector('button').style.display = 'inline-block';
+    resetGame();
+  }
+
+  function checkWin() {
+    for (const condition of winConditions) {
+      const [a, b, c] = condition;
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+        gameOver = true;
+        message.textContent = `${currentPlayer} venceu!`;
+        setTimeout(() => alert(`${currentPlayer} venceu!`), 100);
+        return;
+      }
+    }
+    if (!board.includes('')) {
+      gameOver = true;
+      message.textContent = 'Empate!';
+      setTimeout(() => alert('Empate!'), 100);
+    }
+  }
+
+  function handleClick(e) {
+    const index = e.target.getAttribute('data-cell');
+    if (board[index] || gameOver) return;
+
+    board[index] = currentPlayer;
+    e.target.textContent = currentPlayer;
+    e.target.classList.add('taken', currentPlayer.toLowerCase());
+    checkWin();
+    if (!gameOver) {
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      currentPlayerIndicator.textContent = currentPlayer;
+      if (mode === 'robot' && currentPlayer === 'O') {
+        robotMove();
+      }
+    }
+  }
+
+  function robotMove() {
+    const emptyCells = board.map((val, index) => val === '' ? index : null).filter(val => val !== null);
+    const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    board[randomIndex] = 'O';
+    cells[randomIndex].textContent = 'O';
+    cells[randomIndex].classList.add('taken', 'o');
+    checkWin();
+    currentPlayer = 'X';
+    currentPlayerIndicator.textContent = currentPlayer;
+  }
+
+  function resetGame() {
+    board = ['', '', '', '', '', '', '', '', ''];
+    currentPlayer = 'X';
+    gameOver = false;
+    message.textContent = '';
+    currentPlayerIndicator.textContent = currentPlayer;
+    cells.forEach(cell => {
+      cell.textContent = '';
+      cell.classList.remove('taken', 'x', 'o');
+    });
+  }
+
+  cells.forEach(cell => cell.addEventListener('click', handleClick));
+</script>
+
+</body>
+</html>
